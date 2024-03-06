@@ -1,11 +1,11 @@
 #include <algorithm>
+#include <cmath>
 #include <iostream>
+#include <map>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
-#include <map>
-#include <cmath>
 
 using namespace std;
 
@@ -17,7 +17,7 @@ string ReadLine() {
     return s;
 }
 
-int ReadLineWithNumber() { 
+int ReadLineWithNumber() {
     int result = 0;
     cin >> result;
     ReadLine();
@@ -37,6 +37,7 @@ vector<string> SplitIntoWords(const string& text) {
             word += c;
         }
     }
+
     if (!word.empty()) {
         words.push_back(word);
     }
@@ -46,11 +47,11 @@ vector<string> SplitIntoWords(const string& text) {
 
 struct Document {
     int id;
-    double relevance;   
+    double relevance;
 };
 
 class SearchServer {
-public:
+   public:
     void SetStopWords(const string& text) {
         for (const string& word : SplitIntoWords(text)) {
             stop_words_.insert(word);
@@ -58,10 +59,12 @@ public:
     }
 
     void AddDocument(int document_id, const string& document) {
-        const map<string, double> words_tf = SplitIntoWordsNoStopWithTF(document);
-        for(const auto& [word, tf] : words_tf) {
-            documents_[word][document_id] = tf;
+        const map<string, double> words_tf =
+            SplitIntoWordsNoStopWithTF(document);
+        for (const auto& [word, tf] : words_tf) {
+            documents_[word][document_count_] = tf;
         }
+
         document_count_ += 1;
     }
 
@@ -75,16 +78,14 @@ public:
         if (matched_documents.size() > MAX_RESULT_DOCUMENT_COUNT) {
             matched_documents.resize(MAX_RESULT_DOCUMENT_COUNT);
         }
+
         return matched_documents;
     }
 
-private:
-
+   private:
     map<string, map<int, double>> documents_;
-
     set<string> stop_words_;
-    
-    int document_count_ = 0; 
+    int document_count_ = 0;
 
     bool IsStopWord(const string& word) const {
         return stop_words_.count(word) > 0;
@@ -97,6 +98,7 @@ private:
                 words.push_back(word);
             }
         }
+
         return words;
     }
 
@@ -108,52 +110,61 @@ private:
                 words.push_back(word);
             }
         }
-        for(const string& word : words) {
-            double tf = static_cast<double>(count(words.begin(), words.end(), word)) / words.size();
+
+        for (const string& word : words) {
+            double tf =
+                static_cast<double>(count(words.begin(), words.end(), word)) /
+                words.size();
             words_tf[word] = tf;
         }
+
         return words_tf;
     }
-    
-    struct Query{
+
+    struct Query {
         set<string> query_words;
         set<string> minus_words;
     };
-    
+
     Query ParseQuery(const string& text) const {
         Query query;
         for (const string& word : SplitIntoWordsNoStop(text)) {
-            query.query_words.insert(word);   
-            if(word[0] == '-') {
+            query.query_words.insert(word);
+            if (word[0] == '-') {
                 query.minus_words.insert(word.substr(1));
             }
         }
+
         return query;
     }
 
     vector<Document> FindAllDocuments(const Query& query) const {
         vector<Document> matched_documents;
-        map<int,double> document_relevance;
+        map<int, double> document_relevance;
         for (const auto& word : query.query_words) {
-            if(documents_.count(word)) {
+            if (documents_.count(word)) {
                 const map<int, double>& id_tf = documents_.at(word);
-                for(const auto& [id, tf]: id_tf) {
-                    double idf = log(static_cast<double>(document_count_) / id_tf.size()); 
-                    document_relevance[id] += tf * idf; 
-                } 
+                for (const auto& [id, tf] : id_tf) {
+                    double idf = log(static_cast<double>(document_count_) /
+                                     id_tf.size());
+                    document_relevance[id] += tf * idf;
+                }
             }
         }
+
         for (const auto& m_word : query.minus_words) {
-            if(documents_.count(m_word)) {
+            if (documents_.count(m_word)) {
                 const map<int, double>& id_tf = documents_.at(m_word);
-                for(const auto& [id, tf]: id_tf) {
+                for (const auto& [id, tf] : id_tf) {
                     document_relevance.erase(id);
                 }
             }
         }
-        for(const auto& [id, relevance] : document_relevance) {
+
+        for (const auto& [id, relevance] : document_relevance) {
             matched_documents.push_back({id, relevance});
         }
+
         return matched_documents;
     }
 };
@@ -165,15 +176,16 @@ SearchServer CreateSearchServer() {
     for (int document_id = 0; document_id < document_count; ++document_id) {
         search_server.AddDocument(document_id, ReadLine());
     }
+
     return search_server;
 }
 
 int main() {
     const SearchServer search_server = CreateSearchServer();
-
     const string query = ReadLine();
-    for (const auto& [document_id, relevance] : search_server.FindTopDocuments(query)) {
-        cout << "{ document_id = "s << document_id << ", "
-             << "relevance = "s << relevance << " }"s << endl;
+    for (const auto& [document_id, relevance] :
+         search_server.FindTopDocuments(query)) {
+        cout << "{ document_id = "s << document_id << ", " << "relevance = "s
+             << relevance << " }"s << endl;
     }
 }
